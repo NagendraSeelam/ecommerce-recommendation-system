@@ -52,23 +52,37 @@ content_index_to_product = {
 
 
 # -----------------------------
-# UI
+# Header
 # -----------------------------
 
 st.title("🛍️ E-Commerce Recommendation System")
 
 st.write(
-    "Get personalized product recommendations using "
+    "Personalized product recommendations using "
     "Collaborative Filtering and Content-Based Filtering."
 )
 
-st.info(
-    f"Hybrid Model: {hybrid_weight:.0%} Collaborative Filtering + "
-    f"{1 - hybrid_weight:.0%} Content-Based Filtering"
-)
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric("Products", f"{len(content_products):,}")
+
+with col2:
+    st.metric("Customers", f"{len(train_user_item.index):,}")
+
+with col3:
+    st.metric(
+        "Hybrid Model",
+        f"{hybrid_weight:.0%} CF / {(1-hybrid_weight):.0%} Content"
+    )
+
+st.divider()
 
 
-# Customer selection
+# -----------------------------
+# Customer Selection
+# -----------------------------
+
 customer_ids = train_user_item.index.tolist()
 
 selected_customer = st.selectbox(
@@ -84,6 +98,10 @@ selected_customer = st.selectbox(
 if selected_customer == "NEW CUSTOMER":
 
     st.subheader("🔥 Popular Products")
+
+    st.caption(
+        "Recommendations for new customers are based on popular products."
+    )
 
     popular_codes = [str(x) for x in popular_products.index[:5]]
 
@@ -130,13 +148,10 @@ else:
 
     scores = {}
 
-    # Generate recommendations from purchased products
+    # Collaborative Filtering + Content-Based Filtering
     for product in purchased_products:
 
-        # -------------------------
         # Collaborative Filtering
-        # -------------------------
-
         if product in cf_product_to_index:
 
             cf_idx = cf_product_to_index[product]
@@ -160,10 +175,7 @@ else:
                     + hybrid_weight * similarity
                 )
 
-        # -------------------------
         # Content-Based Filtering
-        # -------------------------
-
         if product in content_product_to_index:
 
             content_idx = content_product_to_index[product]
@@ -187,7 +199,7 @@ else:
                     + (1 - hybrid_weight) * similarity
                 )
 
-    # Remove already purchased products
+    # Remove products already purchased
     for product in purchased_products:
         scores.pop(product, None)
 
@@ -210,10 +222,11 @@ else:
         .isin(recommendation_codes)
     ].copy()
 
-    result["Score"] = (
+    result["Recommendation Score"] = (
         result["StockCode"]
         .astype(str)
         .map(score_dict)
+        .round(2)
     )
 
     result["Rank"] = (
@@ -231,12 +244,23 @@ else:
 
     st.dataframe(
         result[
-            ["Rank", "StockCode", "Description", "Score"]
+            [
+                "Rank",
+                "StockCode",
+                "Description",
+                "Recommendation Score"
+            ]
         ],
         use_container_width=True,
         hide_index=True
     )
 
     st.caption(
-        f"Based on {len(purchased_products)} previously purchased products."
+        f"Recommendations generated from "
+        f"{len(purchased_products)} previously purchased products."
+    )
+
+    st.info(
+        "The recommendation engine combines Collaborative Filtering "
+        "and Content-Based Filtering using a 90/10 hybrid weighting."
     )
